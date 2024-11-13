@@ -42,7 +42,7 @@ def extract_tags_with_llava(image):
             image.save(temp_file, format="PNG")
 
         image = Image.open(image_path)
-        st.image(image, caption="Uploaded Image", use_column_width=True)
+        #st.image(image, caption="Uploaded Image", use_column_width=True)
 
         res = ollama.chat(
             model=LLAVA_MODEL,
@@ -161,7 +161,7 @@ def extract_tags_with_llava_image_generation(image_bytes):
         
         # Load and display the saved image
         image = Image.open(image_path)
-        st.image(image, caption="Uploaded Image", use_column_width=True)
+        #st.image(image, caption="Uploaded Image", use_column_width=True)
 
         # Start the timer
         start = time.time()
@@ -196,38 +196,57 @@ def extract_tags_with_llava_image_generation(image_bytes):
         st.error(f"Error during LLaVA tag extraction: {e}")
         return None
 
+
+# modify to see the image just once!
 def uploading_image_main():
     st.title("AI-Generated Story from Image (Upload)")
 
-    finished = False
-
+    # Initialize session states
     if "image_bytes" not in st.session_state:
         st.session_state.image_bytes = None
+    if "image_display" not in st.session_state:
+        st.session_state.image_display = None
     if "tags" not in st.session_state:
         st.session_state.tags = []
     if "story" not in st.session_state:
         st.session_state.story = ""
     if "translated_story" not in st.session_state:
         st.session_state.translated_story = ""
+    if "show_evaluation" not in st.session_state:
+        st.session_state.show_evaluation = False  # Track evaluation box visibility
+    if "feedback_text" not in st.session_state:
+        st.session_state.feedback_text = ""  # Store feedback text
 
+    # Upload image
     uploaded_image = st.file_uploader("Upload an Image", type=["jpg", "jpeg", "png"])
 
     if uploaded_image:
-        image = Image.open(uploaded_image)
-        tags = extract_tags_with_llava(image)
+        # Only re-extract tags if the image is new
+        image_bytes = uploaded_image.getvalue()
+        if st.session_state.image_bytes != image_bytes:
+            st.session_state.image_bytes = image_bytes
+            st.session_state.image_display = Image.open(io.BytesIO(image_bytes))
+            tags = extract_tags_with_llava(st.session_state.image_display)
+            st.session_state.tags = tags
 
-        if tags:
+        # Display the image from session state
+        if st.session_state.image_display:
+            st.image(st.session_state.image_display, caption="Uploaded Image", use_column_width=True)
+
+        # Story generation based on tags
+        if st.session_state.tags:
             genre = st.selectbox("Choose a story genre", ["fantasy", "mystery", "romance", "sci-fi", "adventure"])
             length = st.selectbox("Choose the length of the story", ["short", "medium", "long"])
 
             if st.button("Generate Story"):
-                st.session_state.story = generate_story_with_ollama(tags, genre, length)
+                st.session_state.story = generate_story_with_ollama(st.session_state.tags, genre, length)
 
+            # Display the generated story
             if st.session_state.story:
                 st.subheader("Generated Story")
                 st.write(st.session_state.story)
-                count = word_count(st.session_state.story)
 
+                # Option to translate the story
                 translate_option = st.checkbox("Translate Story")
                 if translate_option:
                     language = st.selectbox("Choose a language", list(LANGUAGE_MODELS.keys()))
@@ -235,34 +254,38 @@ def uploading_image_main():
                         model_name = LANGUAGE_MODELS[language]
                         st.session_state.translated_story = translation(language, st.session_state.story, model_name)
 
+                # Display translated story if available
                 if st.session_state.translated_story:
                     st.subheader(f"Translated Story ({language})")
                     st.write(st.session_state.translated_story)
 
                     if st.button("Play Translated Story Audio"):
                         text_to_speech(st.session_state.translated_story, languages_dict[language])
-                        finished = True
+                        st.session_state.show_evaluation = True  # Show evaluation after audio plays
 
+                # Play original story audio
                 if st.button("Play Original Story Audio"):
                     text_to_speech(st.session_state.story, "en")
-                    finished = True
+                    st.session_state.show_evaluation = True  # Show evaluation after audio plays
 
-
-                if finished:
+                # Display evaluation section if the evaluation flag is set
+                if st.session_state.show_evaluation:
                     st.subheader("General Evaluation")
-                    st.text_area("Provide feedback on the story")
+                    
+                    # Display the feedback text area linked to the session state
+                    feedback = st.text_area("Provide feedback on the story", value=st.session_state.feedback_text)
+                    
+                    # When "Send Evaluation" is pressed
                     if st.button("Send Evaluation"):
                         st.write("Thank you for your evaluation!")
-
-
-
+                        st.session_state.feedback_text = ""  # Clear feedback text after submission
+                        st.session_state.show_evaluation = False  # Optionally hide evaluation after submission
 
 
 def image_generation_main():
     st.title("AI-Generated Story from Image (Generate)")
 
-    finished = False
-
+    # Initialize session states
     if "image_bytes_gen" not in st.session_state:
         st.session_state.image_bytes_gen = None
     if "tags_gen" not in st.session_state:
@@ -271,17 +294,29 @@ def image_generation_main():
         st.session_state.story_gen = ""
     if "translated_story_gen" not in st.session_state:
         st.session_state.translated_story_gen = ""
+    if "show_evaluation_gen" not in st.session_state:
+        st.session_state.show_evaluation_gen = False  # Track evaluation box visibility
+    if "feedback_text_gen" not in st.session_state:
+        st.session_state.feedback_text_gen = ""  # Store feedback text
 
+    # Prompt for image generation
     prompt = st.text_input("Enter a prompt to generate an image")
     if st.button("Generate Image"):
         if prompt:
+            # Generate and display image
             st.session_state.image_bytes_gen = generate_image_from_text(prompt)
         else:
             st.warning("Please enter a prompt to generate an image.")
 
+    # Display the image if it exists in session state
     if st.session_state.image_bytes_gen:
-        st.session_state.tags_gen = extract_tags_with_llava_image_generation(st.session_state.image_bytes_gen)
+        st.image(st.session_state.image_bytes_gen, caption="Generated Image", use_column_width=True)
 
+        # Only re-extract tags if the image is new
+        if st.session_state.tags_gen == []:
+            st.session_state.tags_gen = extract_tags_with_llava_image_generation(st.session_state.image_bytes_gen)
+
+        # Generate story based on tags
         if st.session_state.tags_gen:
             genre = st.selectbox("Choose a story genre", ["fantasy", "mystery", "romance", "sci-fi", "adventure"])
             length = st.selectbox("Choose the length of the story", ["short", "medium", "long"])
@@ -289,10 +324,12 @@ def image_generation_main():
             if st.button("Generate Story"):
                 st.session_state.story_gen = generate_story_with_ollama(st.session_state.tags_gen, genre, length)
 
+            # Display the generated story
             if st.session_state.story_gen:
                 st.subheader("Generated Story")
                 st.write(st.session_state.story_gen)
 
+                # Option to translate the story
                 translate_option = st.checkbox("Translate Story")
                 if translate_option:
                     language = st.selectbox("Choose a language", list(LANGUAGE_MODELS.keys()))
@@ -300,25 +337,33 @@ def image_generation_main():
                         model_name = LANGUAGE_MODELS[language]
                         st.session_state.translated_story_gen = translation(language, st.session_state.story_gen, model_name)
 
+                # Display translated story if available
                 if st.session_state.translated_story_gen:
                     st.subheader(f"Translated Story ({language})")
                     st.write(st.session_state.translated_story_gen)
 
                     if st.button("Play Translated Story Audio"):
                         text_to_speech(st.session_state.translated_story_gen, languages_dict[language])
-                        finished = True
+                        st.session_state.show_evaluation_gen = True  # Show evaluation after audio plays
 
+                # Play original story audio
                 if st.button("Play Original Story Audio"):
                     text_to_speech(st.session_state.story_gen, "en")
-                    finished = True
+                    st.session_state.show_evaluation_gen = True  # Show evaluation after audio plays
 
-
-                if finished:
+                # Display evaluation section if the evaluation flag is set
+                if st.session_state.show_evaluation_gen:
                     st.subheader("General Evaluation")
-                    st.text_area("Provide feedback on the story")
+                    
+                    # Display the feedback text area linked to the session state
+                    feedback = st.text_area("Provide feedback on the story", value=st.session_state.feedback_text_gen)
+                    
+                    # When "Send Evaluation" is pressed
                     if st.button("Send Evaluation"):
                         st.write("Thank you for your evaluation!")
-                        
+                        st.session_state.feedback_text_gen = ""  # Clear feedback text after submission
+                        st.session_state.show_evaluation_gen = False  # Optionally hide evaluation after submission
+
 
 def main():
     page = st.sidebar.selectbox("Choose between Generating or Uploading an Image", ["Upload Image", "Generate Image"])
