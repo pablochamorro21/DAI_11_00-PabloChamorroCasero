@@ -34,7 +34,13 @@ languages_dict = {
 
 def extract_tags_with_llava(image):
     """
-    Use LLaVA to describe the image and extract 5 tags.
+    Uses LLaVA model to analyze an uploaded image and extracts five descriptive tags.
+
+    Args:
+        image (PIL.Image): The input image.
+
+    Returns:
+        str: A comma-separated string of tags extracted from the image or None if an error occurs.
     """
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as temp_file:
@@ -42,8 +48,6 @@ def extract_tags_with_llava(image):
             image.save(temp_file, format="PNG")
 
         image = Image.open(image_path)
-        #st.image(image, caption="Uploaded Image", use_column_width=True)
-
         res = ollama.chat(
             model=LLAVA_MODEL,
             messages=[
@@ -66,6 +70,17 @@ def extract_tags_with_llava(image):
         return None
 
 def generate_story_with_ollama(tags, genre, length):
+    """
+    Generates a story based on extracted tags, genre, and length using the OLLAMA model.
+
+    Args:
+        tags (str): Comma-separated tags describing elements to include in the story.
+        genre (str): The genre of the story (e.g., fantasy, mystery).
+        length (str): Desired story length ('short', 'medium', 'long').
+
+    Returns:
+        str: The generated story text or None if an error occurs.
+    """
     word_count = 300 if length == "short" else 600 if length == "medium" else 1000
     prompt = (f"Write a {genre} story using the following elements: {tags}. "
               f"The story should be around {word_count} words.")
@@ -84,10 +99,30 @@ def generate_story_with_ollama(tags, genre, length):
         return None
 
 def word_count(story):
+    """
+    Calculates the number of words in a story.
+
+    Args:
+        story (str): The story text.
+
+    Returns:
+        int: The word count of the story.
+    """
     words = story.split()
     return len(words)
 
 def translation(language, story, model_name):
+    """
+    Translates a story to a specified language using MarianMT model.
+
+    Args:
+        language (str): Target language for translation.
+        story (str): Story text to be translated.
+        model_name (str): Name of the model for the specified language.
+
+    Returns:
+        str: Translated story text.
+    """
     tokenizer = MarianTokenizer.from_pretrained(model_name)
     model = MarianMTModel.from_pretrained(model_name)
 
@@ -124,6 +159,13 @@ def translation(language, story, model_name):
     return translated_story
 
 def text_to_speech(text, language):
+    """
+    Converts text to speech using Google Text-to-Speech (gTTS) and plays the audio.
+
+    Args:
+        text (str): Text to be converted to speech.
+        language (str): Language code for the text (e.g., 'en' for English).
+    """
     tts = gTTS(text=text, lang=language)
     with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as temp_file:
         tts.save(temp_file.name)
@@ -137,7 +179,15 @@ def text_to_speech(text, language):
     os.remove(temp_file.name)
 
 def generate_image_from_text(prompt):
-    """Generate an image from a text prompt using Stable Diffusion."""
+    """
+    Generates an image from a text prompt using the Stable Diffusion model.
+
+    Args:
+        prompt (str): Text description for the image generation.
+
+    Returns:
+        bytes: Byte content of the generated image.
+    """
     device = torch.device("mps")  # Set device to MPS for Apple Silicon
     model_id = "CompVis/stable-diffusion-v1-4"
     pipe = StableDiffusionPipeline.from_pretrained(model_id).to(device)
@@ -149,24 +199,24 @@ def generate_image_from_text(prompt):
     img_byte_arr.seek(0)
     return img_byte_arr.getvalue()  # Return the byte content
 
-
 def extract_tags_with_llava_image_generation(image_bytes):
-    """Use LLaVA to describe the uploaded image and extract 5 tags."""
+    """
+    Extracts tags from an AI-generated image by using the LLaVA model.
+
+    Args:
+        image_bytes (bytes): Byte content of the image.
+
+    Returns:
+        str: Comma-separated string of tags or None if an error occurs.
+    """
     try:
-        # Save the image temporarily to a specific path on the desktop
         with tempfile.NamedTemporaryFile(delete=False, suffix=".png", dir=os.path.expanduser("~/Desktop")) as temp_file:
             image_path = temp_file.name
             with open(image_path, "wb") as f:
                 f.write(image_bytes)
         
-        # Load and display the saved image
         image = Image.open(image_path)
-        #st.image(image, caption="Uploaded Image", use_column_width=True)
 
-        # Start the timer
-        start = time.time()
-
-        # Use LLaVA to describe the image and extract tags
         res = ollama.chat(
             model=LLAVA_MODEL,
             messages=[
@@ -178,16 +228,13 @@ def extract_tags_with_llava_image_generation(image_bytes):
             ]
         )
 
-        # Check if there is a response from the model
         if 'message' not in res or 'content' not in res['message']:
             st.error("Failed to retrieve a valid response from the model.")
             return None
 
-        # Extract the tags from the response
         content = res['message']['content']
-        tags = content.splitlines()[-1]  # Assume the last line contains the tags
+        tags = content.splitlines()[-1] 
 
-        # Clean up: Delete the temporary file after processing
         if os.path.exists(image_path):
             os.remove(image_path)
         
@@ -196,9 +243,11 @@ def extract_tags_with_llava_image_generation(image_bytes):
         st.error(f"Error during LLaVA tag extraction: {e}")
         return None
 
-
-# modify to see the image just once!
 def uploading_image_main():
+    """
+    Main function for the 'Upload Image' page, allowing users to upload an image,
+    generate a story, and translate/play the generated story.
+    """
     st.title("AI-Generated Story from Image (Upload)")
 
     # Initialize session states
@@ -282,7 +331,12 @@ def uploading_image_main():
                         st.session_state.show_evaluation = False  # Optionally hide evaluation after submission
 
 
+
 def image_generation_main():
+    """
+    Main function for the 'Generate Image' page, allowing users to generate an image
+    from text, generate a story, and translate/play the generated story.
+    """
     st.title("AI-Generated Story from Image (Generate)")
 
     # Initialize session states
@@ -365,7 +419,11 @@ def image_generation_main():
                         st.session_state.show_evaluation_gen = False  # Optionally hide evaluation after submission
 
 
+
 def main():
+    """
+    Main function for Streamlit app that selects between 'Upload Image' and 'Generate Image' pages.
+    """
     page = st.sidebar.selectbox("Choose between Generating or Uploading an Image", ["Upload Image", "Generate Image"])
 
     if page == "Upload Image":
