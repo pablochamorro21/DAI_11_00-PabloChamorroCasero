@@ -11,6 +11,7 @@ import torch
 import io
 import pygame
 from gtts import gTTS
+from pydub import AudioSegment
 
 # Model configurations
 LLAVA_MODEL = "llava:13b"
@@ -23,6 +24,7 @@ LANGUAGE_MODELS = {
     "German": "Helsinki-NLP/opus-mt-en-de",
     "Portuguese": "Helsinki-NLP/opus-mt-tc-big-en-pt"
 }
+
 
 languages_dict = {
     "Spanish": "es",
@@ -158,25 +160,40 @@ def translation(language, story, model_name):
     translated_story = "\n\n".join(translated_paragraphs)
     return translated_story
 
-def text_to_speech(text, language):
+def text_to_speech(text, language, speed=1.0):
     """
-    Converts text to speech using Google Text-to-Speech (gTTS) and plays the audio.
+    Converts text to speech using Google Text-to-Speech (gTTS) and plays the audio at a specified speed.
 
     Args:
         text (str): Text to be converted to speech.
         language (str): Language code for the text (e.g., 'en' for English).
+        speed (float): Playback speed multiplier (1.0 is normal speed, <1.0 is slower, >1.0 is faster).
     """
+    # Generate TTS audio file
     tts = gTTS(text=text, lang=language)
     with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as temp_file:
         tts.save(temp_file.name)
-        pygame.mixer.init()
-        pygame.mixer.music.load(temp_file.name)
-        pygame.mixer.music.play()
+        
+        # Load the audio and adjust playback speed
+        audio = AudioSegment.from_file(temp_file.name)
+        playback_audio = audio.speedup(playback_speed=speed)
 
+        # Save the modified audio to a new temp file
+        modified_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
+        playback_audio.export(modified_temp_file.name, format="mp3")
+        
+        # Play the modified audio with pygame
+        pygame.mixer.init()
+        pygame.mixer.music.load(modified_temp_file.name)
+        pygame.mixer.music.play()
+        
         while pygame.mixer.music.get_busy():
             pygame.time.Clock().tick(10)
+        
+        # Clean up temporary files
+        os.remove(temp_file.name)
+        os.remove(modified_temp_file.name)
 
-    os.remove(temp_file.name)
 
 def generate_image_from_text(prompt):
     """
@@ -308,13 +325,17 @@ def uploading_image_main():
                     st.subheader(f"Translated Story ({language})")
                     st.write(st.session_state.translated_story)
 
-                    if st.button("Play Translated Story Audio"):
-                        text_to_speech(st.session_state.translated_story, languages_dict[language])
-                        st.session_state.show_evaluation = True  # Show evaluation after audio plays
+                # Slider for speed will always appear below the story
+                speed = st.slider("Choose playback speed (recommended: 1.5)", 1.1, 1.6, 2.1)
+
+                # Play translated story audio if applicable
+                if st.session_state.translated_story and st.button("Play Translated Story Audio"):
+                    text_to_speech(st.session_state.translated_story, languages_dict[language], speed)
+                    st.session_state.show_evaluation = True  # Show evaluation after audio plays
 
                 # Play original story audio
                 if st.button("Play Original Story Audio"):
-                    text_to_speech(st.session_state.story, "en")
+                    text_to_speech(st.session_state.story, "en", speed)
                     st.session_state.show_evaluation = True  # Show evaluation after audio plays
 
                 # Display evaluation section if the evaluation flag is set
@@ -396,14 +417,22 @@ def image_generation_main():
                     st.subheader(f"Translated Story ({language})")
                     st.write(st.session_state.translated_story_gen)
 
-                    if st.button("Play Translated Story Audio"):
-                        text_to_speech(st.session_state.translated_story_gen, languages_dict[language])
-                        st.session_state.show_evaluation_gen = True  # Show evaluation after audio plays
+                    # Display speed slider below translated story
+                    speed = st.slider("Choose playback speed (recommended: 1.5)", 1.1, 1.6, 2.1)
 
-                # Play original story audio
-                if st.button("Play Original Story Audio"):
-                    text_to_speech(st.session_state.story_gen, "en")
-                    st.session_state.show_evaluation_gen = True  # Show evaluation after audio plays
+                    # Button to play audio for translated story
+                    if st.button("Play Translated Story Audio"):
+                        text_to_speech(st.session_state.translated_story_gen, languages_dict[language], speed)
+                        st.session_state.show_evaluation_gen = True
+
+                else:
+                    # Display speed slider below original story
+                    speed = st.slider("Choose playback speed (recommended: 1.5)", 1.1, 1.6, 2.1)
+
+                    # Button to play audio for original story
+                    if st.button("Play Original Story Audio"):
+                        text_to_speech(st.session_state.story_gen, "en", speed)
+                        st.session_state.show_evaluation_gen = True
 
                 # Display evaluation section if the evaluation flag is set
                 if st.session_state.show_evaluation_gen:
@@ -417,7 +446,6 @@ def image_generation_main():
                         st.write("Thank you for your evaluation!")
                         st.session_state.feedback_text_gen = ""  # Clear feedback text after submission
                         st.session_state.show_evaluation_gen = False  # Optionally hide evaluation after submission
-
 
 
 def main():
