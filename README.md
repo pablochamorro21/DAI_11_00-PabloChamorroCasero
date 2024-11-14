@@ -15,7 +15,7 @@ Once the story is created, users have the option to either listen to it in Engli
 3. **Multilingual Translation Pipeline**:
     - Pre-trained MarianMT models support translation of generated tags, stories, or text into a range of languages including Spanish, French, German, and Portuguese, making the content accessible for multilingual users.
 4. **Text-to-Speech (TTS) Functionality**:
-    - Users can listen to the generated story, either in its original English or in any translated language selected. A TTS model, gTTs, converts the text to audio, allowing users to enjoy the narrative in their language of choice.
+    - Users can listen to the generated story, either in its original English or in any translated language selected. A TTS model, gTTs, converts the text to audio, allowing users to enjoy the narrative in their language of choice. Furthermore, the library pydub, with the model AudioSegment enables the user to choose the speed of the person telling the story.
 5. **Interactive User Interface**:
     - Streamlit provides an easy-to-use interface where users can upload images, view descriptions and tags, and request translations.
 
@@ -71,7 +71,7 @@ The project focuses on providing a streamlined pipeline for processing images to
 - **Tag Extraction**: Integrated with the LLaVA model through `ollama` API calls to generate descriptive tags. These tags capture essential details about the image, aiding in story generation and enhancing user customization options.
 - **Story Generation**: Uses `ollama` to create a unique story based on the image tags, with customizable options for genre and length. This story generation module draws on the tags and selected parameters to create a narrative that aligns with the image’s themes.
 - **Translation Pipeline**: Leverages pre-trained MarianMT models from Hugging Face to provide multilingual translation of tags and generated stories. This feature supports several languages, including Spanish, French, German, and Portuguese, making the content accessible to a broader audience.
-- **Text-to-Speech (TTS)**: Converts generated stories into audio files using the model gTTS, allowing users to listen to the story in the original language or any translated language of choice.
+- **Text-to-Speech (TTS)**: Converts generated stories into audio files using the model gTTS, allowing users to listen to the story in the original language or any translated language of choice, and enabling the user to choose the speed of the storytelling itself.
 - **Interactive UI Elements**: Streamlit's interactive features are used to control the workflow, allowing users to upload images, select story options, view tags, and listen to or download the story and audio. This makes the interface intuitive and accessible for users of all backgrounds.
 
 ### 3. Research and Model Selection
@@ -124,6 +124,7 @@ The project focuses on providing a streamlined pipeline for processing images to
 - **Feature**:
     - Optional audio to listen to the story using Google Text-to-Speech (gTTS) and PyGame for playback.
     - Users can click to hear generated story in their preferred language.
+    - Users can choose the speed of the storytelling thanks to AudioSegment.
 
 **7. Feedback Collection**
 
@@ -214,6 +215,7 @@ The code follows a verbose style, with each function and step documented for eas
     - **Purpose**: Converts text to speech in a specified language using Google Text-to-Speech (gTTS) and plays the audio using PyGame.
     - **Steps**:
         - Generates an audio file for the text using gTTS and saves it temporarily.
+        - Received the speed chosen by the user to play the audio which includes the story.
         - Initializes PyGame to play the audio file, providing auditory feedback to the user.
         - Cleans up by deleting the temporary audio file after playback.
     - **Error Handling**: Provides error feedback if there are issues with audio generation or playback.
