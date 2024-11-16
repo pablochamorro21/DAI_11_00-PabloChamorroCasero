@@ -247,3 +247,5 @@ To exceed basic functionality requirements, additional features were considered,
 ## Conclusion
 
 This README provides a comprehensive summary of the Image Tagging, Translation, and Generation Pipeline project, covering its purpose, structure, and features. The project meets all requirements and includes key features such as image tagging, translation, story generation, and user feedback collection. Advanced functionalities, like image generation from text prompts using Stable Diffusion and text-to-speech playback using Google Text-to-Speech (gTTS), enhance accessibility and interactivity. The project also includes extensive error handling, a user-friendly interface, and supports various media types, making it a flexible tool for content creation and translation.
+
+GITHUB LINK: https://github.com/pablochamorro21/DAI_11_00-PabloChamorroCasero
